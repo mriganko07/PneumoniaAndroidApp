@@ -33,6 +33,8 @@ import android.widget.Toast;
 
 import java.io.FileOutputStream;
 
+import android.widget.ProgressBar;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final int IMAGE_PICK_CODE = 1000;
@@ -49,6 +51,8 @@ public class MainActivity extends AppCompatActivity {
 
     private Bitmap selectedBitmap;
     private String currentPhotoPath;
+
+    private ProgressBar progressConfidence;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +72,7 @@ public class MainActivity extends AppCompatActivity {
         imageView = findViewById(R.id.imageView);
         tvPrediction = findViewById(R.id.tvPrediction);
         tvConfidence = findViewById(R.id.tvConfidence);
+        progressConfidence = findViewById(R.id.progressConfidence);
         Button btnSelect = findViewById(R.id.btnSelect);
         Button btnCamera = findViewById(R.id.btnCamera);
 
@@ -136,6 +141,7 @@ public class MainActivity extends AppCompatActivity {
                     imageView.setImageBitmap(selectedBitmap);
 
                     runModelAndDisplay(selectedBitmap); // <-- new helper
+
 
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -277,11 +283,13 @@ public class MainActivity extends AppCompatActivity {
             lastConfidence = confidence;
             tvPrediction.setText("Prediction: Pneumonia");
             tvConfidence.setText("Confidence: " + String.format("%.2f", confidence * 100) + "%");
+            progressConfidence.setProgress((int)(confidence * 100)); // <-- add this
         } else {
             lastPrediction = "Normal";
             lastConfidence = 1 - confidence;
             tvPrediction.setText("Prediction: Normal");
             tvConfidence.setText("Confidence: " + String.format("%.2f", (1 - confidence) * 100) + "%");
+            progressConfidence.setProgress((int)((1 - confidence) * 100)); // <-- add this
         }
     }
 }
