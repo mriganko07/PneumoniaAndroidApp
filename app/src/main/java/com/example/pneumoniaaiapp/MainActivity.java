@@ -35,7 +35,7 @@ public class MainActivity extends AppCompatActivity {
     private Interpreter preClassifierTflite;
 
     private ImageView imageView;
-    private TextView tvResult;
+    private TextView tvPrediction, tvConfidence;
     private Bitmap selectedBitmap;
     private String currentPhotoPath;
 
@@ -55,7 +55,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         imageView = findViewById(R.id.imageView);
-        tvResult = findViewById(R.id.tvResult);
+        tvPrediction = findViewById(R.id.tvPrediction);
+        tvConfidence = findViewById(R.id.tvConfidence);
         Button btnSelect = findViewById(R.id.btnSelect);
         Button btnCamera = findViewById(R.id.btnCamera);
 
@@ -113,27 +114,26 @@ public class MainActivity extends AppCompatActivity {
                     selectedBitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
                     imageView.setImageBitmap(selectedBitmap);
 
-                    String prediction = runModel(selectedBitmap);
-                    tvResult.setText("Prediction: " + prediction);
+                    runModelAndDisplay(selectedBitmap); // <-- new helper
 
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             } else if (requestCode == CAMERA_CAPTURE_CODE) {
-                // ✅ Step 4: Debug check if file exists
                 File file = new File(currentPhotoPath);
                 if (file.exists()) {
                     selectedBitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
                     imageView.setImageBitmap(selectedBitmap);
 
-                    String prediction = runModel(selectedBitmap);
-                    tvResult.setText("Prediction: " + prediction);
+                    runModelAndDisplay(selectedBitmap); // <-- new helper
                 } else {
-                    tvResult.setText("⚠️ Image file not found: " + currentPhotoPath);
+                    tvPrediction.setText("⚠️ Image file not found");
+                    tvConfidence.setText("");
                 }
             }
         }
     }
+
 
     // 🔹 Run X-ray Preclassifier
     private boolean isXray(Bitmap bitmap) {
@@ -161,10 +161,11 @@ public class MainActivity extends AppCompatActivity {
         return output[0][0] > 0.5f; // true if it's an X-ray
     }
 
-    // 🔹 Run Pneumonia Model
-    private String runModel(Bitmap bitmap) {
+    private void runModelAndDisplay(Bitmap bitmap) {
         if (!isXray(bitmap)) {
-            return "Not an X-ray ❌";
+            tvPrediction.setText("Not an X-ray ❌");
+            tvConfidence.setText("");
+            return;
         }
 
         Bitmap resized = Bitmap.createScaledBitmap(bitmap, 224, 224, true);
@@ -188,10 +189,14 @@ public class MainActivity extends AppCompatActivity {
         float[][] output = new float[1][1];
         pneumoniaTflite.run(inputBuffer, output);
 
-        if (output[0][0] > 0.5f) {
-            return "X-ray ✅ → Pneumonia";
+        float confidence = output[0][0];
+
+        if (confidence > 0.5f) {
+            tvPrediction.setText("Prediction: Pneumonia");
+            tvConfidence.setText("Confidence: " + String.format("%.2f", confidence * 100) + "%");
         } else {
-            return "X-ray ✅ → Normal";
+            tvPrediction.setText("Prediction: Normal");
+            tvConfidence.setText("Confidence: " + String.format("%.2f", (1 - confidence) * 100) + "%");
         }
     }
 }

@@ -25,11 +25,20 @@
         android:text="Capture with Camera" />
 
     <TextView
-        android:id="@+id/tvResult"
+        android:id="@+id/tvPrediction"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Prediction: "
+        android:text="Prediction:"
         android:textSize="18sp"
-        android:padding="20dp" />
+        android:padding="10dp" />
+
+    <TextView
+        android:id="@+id/tvConfidence"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Confidence:"
+        android:textSize="16sp"
+        android:padding="10dp" />
+
 
 </LinearLayout>
