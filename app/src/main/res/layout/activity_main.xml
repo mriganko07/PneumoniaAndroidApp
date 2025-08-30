@@ -1,52 +1,91 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:gravity="center"
-    android:orientation="vertical"
-    android:padding="20dp">
+    android:padding="16dp"
+    android:background="?android:attr/colorBackground"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="8dp">
 
-    <ImageView
-        android:id="@+id/imageView"
-        android:layout_width="250dp"
-        android:layout_height="250dp"
-        android:scaleType="fitCenter"
-        android:src="@mipmap/ic_launcher" />
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
-    <Button
-        android:id="@+id/btnSelect"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Select from Gallery" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="16dp">
 
-    <Button
-        android:id="@+id/btnCamera"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Capture with Camera" />
+            <!-- X-ray Preview -->
+            <ImageView
+                android:id="@+id/imageView"
+                android:layout_width="250dp"
+                android:layout_height="250dp"
+                android:scaleType="centerCrop"
+                android:background="@drawable/image_placeholder_bg"
+                android:contentDescription="X-ray Preview" />
 
-    <TextView
-        android:id="@+id/tvPrediction"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Prediction:"
-        android:textSize="18sp"
-        android:padding="10dp" />
+            <!-- Button Row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginTop="16dp">
 
-    <TextView
-        android:id="@+id/tvConfidence"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Confidence:"
-        android:textSize="16sp"
-        android:padding="10dp" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSelect"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="📁 Gallery" />
 
-    <Button
-        android:id="@+id/btnExportReport"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Export Report"
-        android:layout_marginTop="20dp"/>
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCamera"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="📷 Camera"
+                    android:layout_marginStart="8dp"/>
+            </LinearLayout>
 
+            <!-- Prediction Card -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:background="@drawable/result_card_bg"
+                android:layout_marginTop="20dp"
+                android:elevation="4dp">
 
+                <TextView
+                    android:id="@+id/tvPrediction"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Prediction: "
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
 
-</LinearLayout>
+                <TextView
+                    android:id="@+id/tvConfidence"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Confidence: "
+                    android:textSize="16sp"
+                    android:layout_marginTop="8dp" />
+            </LinearLayout>
+
+            <!-- Export Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnExportReport"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="📄 Export Report"
+                android:layout_marginTop="24dp"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+        </LinearLayout>
+    </ScrollView>
+</com.google.android.material.card.MaterialCardView>
