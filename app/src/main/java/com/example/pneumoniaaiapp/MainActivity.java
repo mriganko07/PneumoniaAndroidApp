@@ -26,6 +26,15 @@ import java.util.Date;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import android.graphics.pdf.PdfDocument;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.widget.Toast;
+
+import java.io.FileOutputStream;
+
+import android.widget.ProgressBar;
+
 public class MainActivity extends AppCompatActivity {
 
     private static final int IMAGE_PICK_CODE = 1000;
@@ -35,9 +44,15 @@ public class MainActivity extends AppCompatActivity {
     private Interpreter preClassifierTflite;
 
     private ImageView imageView;
-    private TextView tvResult;
+    private TextView tvPrediction, tvConfidence;
+
+    private String lastPrediction = "";
+    private float lastConfidence = 0f;
+
     private Bitmap selectedBitmap;
     private String currentPhotoPath;
+
+    private ProgressBar progressConfidence;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,7 +70,9 @@ public class MainActivity extends AppCompatActivity {
         }
 
         imageView = findViewById(R.id.imageView);
-        tvResult = findViewById(R.id.tvResult);
+        tvPrediction = findViewById(R.id.tvPrediction);
+        tvConfidence = findViewById(R.id.tvConfidence);
+        progressConfidence = findViewById(R.id.progressConfidence);
         Button btnSelect = findViewById(R.id.btnSelect);
         Button btnCamera = findViewById(R.id.btnCamera);
 
@@ -86,6 +103,16 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+        Button btnExportReport = findViewById(R.id.btnExportReport);
+        btnExportReport.setOnClickListener(v -> {
+            if (selectedBitmap != null && !lastPrediction.isEmpty()) {
+                generatePDFReport(selectedBitmap, lastPrediction, lastConfidence);
+            } else {
+                Toast.makeText(this, "No prediction available", Toast.LENGTH_SHORT).show();
+            }
+        });
+
     }
 
     private File createImageFile() {
@@ -113,27 +140,87 @@ public class MainActivity extends AppCompatActivity {
                     selectedBitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), imageUri);
                     imageView.setImageBitmap(selectedBitmap);
 
-                    String prediction = runModel(selectedBitmap);
-                    tvResult.setText("Prediction: " + prediction);
+                    runModelAndDisplay(selectedBitmap); // <-- new helper
+
 
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             } else if (requestCode == CAMERA_CAPTURE_CODE) {
-                // ✅ Step 4: Debug check if file exists
                 File file = new File(currentPhotoPath);
                 if (file.exists()) {
                     selectedBitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
                     imageView.setImageBitmap(selectedBitmap);
 
-                    String prediction = runModel(selectedBitmap);
-                    tvResult.setText("Prediction: " + prediction);
+                    runModelAndDisplay(selectedBitmap); // <-- new helper
                 } else {
-                    tvResult.setText("⚠️ Image file not found: " + currentPhotoPath);
+                    tvPrediction.setText("⚠️ Image file not found");
+                    tvConfidence.setText("");
                 }
             }
         }
     }
+
+    private void generatePDFReport(Bitmap xrayImage, String prediction, float confidence) {
+        PdfDocument pdfDocument = new PdfDocument();
+        Paint paint = new Paint();
+
+        // Create page info
+        PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(595, 842, 1).create();
+        PdfDocument.Page page = pdfDocument.startPage(pageInfo);
+        Canvas canvas = page.getCanvas();
+
+        // Title
+        paint.setTextSize(24);
+        paint.setFakeBoldText(true);
+        canvas.drawText("Pneumonia Prediction Report", 50, 50, paint);
+
+        // Date & Time
+        paint.setTextSize(14);
+        paint.setFakeBoldText(false);
+        String dateTime = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date());
+        canvas.drawText("Generated on: " + dateTime, 50, 90, paint);
+
+            // Prediction + Confidence
+        canvas.drawText("Prediction: " + prediction, 50, 140, paint);
+        canvas.drawText("Confidence: " + String.format("%.2f%%", confidence * 100), 50, 170, paint);
+
+        // X-ray Image
+        if (xrayImage != null) {
+            Bitmap scaledBitmap = Bitmap.createScaledBitmap(xrayImage, 400, 400, true);
+            canvas.drawBitmap(scaledBitmap, 50, 200, paint);
+        }
+
+        pdfDocument.finishPage(page);
+
+        // Save file
+        String fileName = "Pneumonia_Report_" + System.currentTimeMillis() + ".pdf";
+        File file = new File(getExternalFilesDir(null), fileName);
+
+        try {
+            pdfDocument.writeTo(new FileOutputStream(file));
+            Toast.makeText(this, "PDF saved: " + file.getAbsolutePath(), Toast.LENGTH_LONG).show();
+
+            // Optionally share
+            sharePDF(file);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Error saving PDF", Toast.LENGTH_SHORT).show();
+        }
+
+        pdfDocument.close();
+    }
+
+
+    private void sharePDF(File file) {
+        Uri uri = FileProvider.getUriForFile(this, getPackageName() + ".fileprovider", file);
+        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+        shareIntent.setType("application/pdf");
+        shareIntent.putExtra(Intent.EXTRA_STREAM, uri);
+        startActivity(Intent.createChooser(shareIntent, "Share Report via"));
+    }
+
 
     // 🔹 Run X-ray Preclassifier
     private boolean isXray(Bitmap bitmap) {
@@ -161,10 +248,11 @@ public class MainActivity extends AppCompatActivity {
         return output[0][0] > 0.5f; // true if it's an X-ray
     }
 
-    // 🔹 Run Pneumonia Model
-    private String runModel(Bitmap bitmap) {
+    private void runModelAndDisplay(Bitmap bitmap) {
         if (!isXray(bitmap)) {
-            return "Not an X-ray ❌";
+            tvPrediction.setText("Not an X-ray ❌");
+            tvConfidence.setText("");
+            return;
         }
 
         Bitmap resized = Bitmap.createScaledBitmap(bitmap, 224, 224, true);
@@ -188,10 +276,20 @@ public class MainActivity extends AppCompatActivity {
         float[][] output = new float[1][1];
         pneumoniaTflite.run(inputBuffer, output);
 
-        if (output[0][0] > 0.5f) {
-            return "X-ray ✅ → Pneumonia";
+        float confidence = output[0][0];
+
+        if (confidence > 0.5f) {
+            lastPrediction = "Pneumonia";
+            lastConfidence = confidence;
+            tvPrediction.setText("Prediction: Pneumonia");
+            tvConfidence.setText("Confidence: " + String.format("%.2f", confidence * 100) + "%");
+            progressConfidence.setProgress((int)(confidence * 100)); // <-- add this
         } else {
-            return "X-ray ✅ → Normal";
+            lastPrediction = "Normal";
+            lastConfidence = 1 - confidence;
+            tvPrediction.setText("Prediction: Normal");
+            tvConfidence.setText("Confidence: " + String.format("%.2f", (1 - confidence) * 100) + "%");
+            progressConfidence.setProgress((int)((1 - confidence) * 100)); // <-- add this
         }
     }
 }
